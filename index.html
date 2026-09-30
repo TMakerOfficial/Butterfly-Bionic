@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Butterfly Bionic — Flasher & Manual</title>
+
+  <!-- esp-web-tools: ใช้แฟลชเฟิร์มแวร์ผ่านเบราว์เซอร์ (ต้องเปิดด้วย Chrome/Edge บนคอม) -->
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.0.0/dist/web/install-button.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Noto+Sans+Thai:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ═══════════════ TOKENS ═══════════════ */
+    :root{
+      --bg:#150c24;
+      --bg-soft:#1d1233;
+      --card:#211636;
+      --card-2:#190f2b;
+      --line:#3a2b54;
+      --line-soft:#2a1e44;
+      --orange:#ffaa00;
+      --cyan:#00ccff;
+      --violet:#b98cff;
+      --pink:#ff7ec9;
+      --green:#3ddc84;
+      --text:#efe9f7;
+      --muted:#a493c4;
+      --muted-2:#6f5f8c;
+      --display:'Orbitron', monospace;
+      --thai:'Noto Sans Thai', system-ui, -apple-system, sans-serif;
+      box-sizing:border-box;
+      padding-top:env(safe-area-inset-top, 0px);
+      padding-bottom:env(safe-area-inset-bottom, 0px);
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+
+    html{scroll-behavior:smooth;scroll-padding-top:70px;}
+    body{
+      font-family:var(--thai);
+      background:
+        radial-gradient(1200px 720px at 12% -6%, rgba(185,140,255,.12), transparent 60%),
+        radial-gradient(1000px 640px at 92% 6%, rgba(255,126,201,.09), transparent 55%),
+        var(--bg);
+      background-attachment:fixed;
+      color:var(--text);
+      line-height:1.65;
+      overflow-x:hidden;
+      position:relative;
+      min-height:100%;
+    }
+
+    /* ── background butterflies (มุมมองด้านข้าง ปีกตีขึ้น-ลง บินไปทั่วจอ — JS ขับเคลื่อน) ── */
+    .butterflies{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none;}
+    .bf{position:absolute;top:0;left:0;will-change:transform;}   /* ตำแหน่ง/ทิศ ตั้งด้วย JS ต่อเฟรม */
+    /* ลำตัวมองด้านข้าง (หัวชี้ไปทางขวา) วางกลางแนวตั้ง */
+    .bf .body{position:absolute;left:0;right:0;top:50%;height:26%;transform:translateY(-50%);}
+    /* ปีกใกล้: บานพับที่ลำตัว (ขอบล่าง) แล้วตีขึ้น-ลงด้วย scaleY (บวก=ขึ้น, ลบ=ลง, ~0=ตะแคงบาง) */
+    .bf .wing{position:absolute;left:0;right:0;bottom:50%;height:56%;
+      transform-origin:50% 100%;
+      animation:sideflap .3s ease-in-out infinite alternate;
+      filter:drop-shadow(0 0 6px currentColor) drop-shadow(0 0 12px currentColor);}
+    .bf .wing svg,.bf .body svg{display:block;width:100%;height:100%;}
+    @keyframes sideflap{ from{transform:scaleY(1);} to{transform:scaleY(-0.82);} }
+    @media(prefers-reduced-motion:reduce){ .bf .wing{animation:none;} }
+
+    .wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 16px 80px;}
+
+    /* ═══════════════ NAV ═══════════════ */
+    nav{
+      position:sticky;top:0;z-index:20;
+      backdrop-filter:blur(10px);
+      background:rgba(21,12,36,.82);
+      border-bottom:1px solid var(--line-soft);
+      padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;
+    }
+    nav .nav-inner{max-width:960px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;}
+    nav a{
+      font-family:var(--display);font-size:.72rem;font-weight:600;letter-spacing:.5px;
+      color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:8px;
+      border:1px solid transparent;transition:.2s;white-space:nowrap;
+    }
+    nav a:hover{color:var(--orange);border-color:var(--line);background:var(--card-2);}
+    nav a.active{color:var(--bg);border-color:transparent;
+      background:linear-gradient(135deg,var(--orange),var(--pink),var(--violet));
+      box-shadow:0 0 14px rgba(185,140,255,.4);}
+
+    /* แต่ละหัวข้อหลักเป็นแท็บ: โชว์ทีละอัน */
+    .sec-panel{display:none;}
+    .sec-panel.active{display:block;}
+
+    /* ═══════════════ HERO ═══════════════ */
+    header.hero{text-align:center;padding:54px 0 30px;}
+    .hero h1{
+      font-family:var(--display);font-weight:900;
+      font-size:clamp(1.9rem,6vw,3.2rem);line-height:1.1;margin:8px 0 6px;
+      background:linear-gradient(100deg,var(--orange),var(--pink),var(--violet),var(--cyan));
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      filter:drop-shadow(0 0 14px rgba(185,140,255,.45));
+    }
+    .hero .sub{font-family:var(--display);font-size:clamp(.8rem,2.4vw,1.05rem);color:var(--cyan);text-shadow:0 0 8px rgba(0,204,255,.5);letter-spacing:1px;}
+    .hero .tag{margin-top:14px;color:var(--muted);font-size:.92rem;max-width:560px;margin-inline:auto;}
+
+    /* ═══════════════ SECTION ═══════════════ */
+    section{margin-top:44px;scroll-margin-top:72px;}
+    .sec-head{margin-bottom:22px;}
+    .sec-head h2{font-family:var(--display);font-weight:700;letter-spacing:.5px;
+      font-size:clamp(1.35rem,4.4vw,1.95rem);color:var(--text);line-height:1.2;}
+    .sec-head h2 span{
+      background:linear-gradient(100deg,var(--orange),var(--pink),var(--violet),var(--cyan));
+      -webkit-background-clip:text;background-clip:text;color:transparent;}
+    .sec-head::after{content:"";display:block;margin-top:11px;width:62px;height:4px;border-radius:4px;
+      background:linear-gradient(90deg,var(--orange),var(--pink),var(--violet),var(--cyan));
+      box-shadow:0 0 12px rgba(185,140,255,.45);}
+
+    .lead{color:var(--muted);margin-bottom:18px;font-size:.96rem;}
+
+    /* ═══════════════ FLASHER ═══════════════ */
+    .flash-box{
+      background:linear-gradient(180deg,var(--card),var(--card-2));
+      border:1px solid var(--line);border-radius:18px;padding:26px 20px;text-align:center;
+      box-shadow:0 0 40px rgba(0,0,0,.4);
+    }
+    .flash-box select{
+      font-family:var(--display);font-size:1rem;padding:.75rem 1.1rem;border-radius:10px;
+      border:2px solid var(--orange);background:rgba(11,15,25,.85);color:var(--orange);
+      cursor:pointer;outline:none;box-shadow:0 0 10px rgba(255,170,0,.25);transition:.3s;
+      width:100%;max-width:380px;margin:0 auto 18px;display:block;text-align:center;
+    }
+    .flash-box select:hover,.flash-box select:focus{box-shadow:0 0 16px var(--orange);}
+
+    esp-web-install-button::part(button),.btn{
+      background:linear-gradient(90deg,var(--orange),var(--pink),var(--violet),var(--cyan),var(--orange));
+      background-size:220% auto;color:var(--bg);
+      font-family:var(--display);font-size:1rem;font-weight:700;letter-spacing:.5px;
+      border:none;border-radius:13px;padding:.95rem 1.8rem;cursor:pointer;
+      box-shadow:0 0 15px rgba(255,170,0,.6);transition:.35s;animation:glow 5s linear infinite;
+      text-transform:uppercase;text-decoration:none;display:inline-block;
+    }
+    esp-web-install-button::part(button):hover,.btn:hover{background-position:right center;box-shadow:0 0 26px var(--cyan);transform:scale(1.02);}
+    @keyframes glow{0%{background-position:0% center;}100%{background-position:200% center;}}
+
+    .flash-note{margin-top:18px;font-size:.8rem;color:var(--muted-2);line-height:1.7;}
+    .flash-note b{color:var(--muted);}
+
+    /* ═══════════════ TABS ═══════════════ */
+    .tabs{display:flex;gap:8px;margin-bottom:22px;background:var(--card-2);padding:6px;border-radius:14px;border:1px solid var(--line-soft);}
+    .tab{
+      flex:1;font-family:var(--display);font-weight:600;font-size:.82rem;
+      padding:.7rem .5rem;border-radius:10px;border:none;cursor:pointer;transition:.25s;
+      background:transparent;color:var(--muted);
+    }
+    .tab small{display:block;font-family:var(--thai);font-size:.62rem;font-weight:400;margin-top:2px;opacity:.75;}
+    .tab.active{background:linear-gradient(135deg,var(--orange),var(--pink),var(--violet));color:var(--bg);box-shadow:0 0 16px rgba(185,140,255,.4);}
+    .panel{display:none;animation:fade .3s ease;}
+    .panel.active{display:block;}
+    @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+    /* ═══════════════ FUNCTION CARDS ═══════════════ */
+    .card{
+      background:var(--card);border:1px solid var(--line);border-radius:16px;
+      padding:18px;margin-bottom:14px;transition:border-color .2s;
+    }
+    .card:hover{border-color:#31415f;}
+    .card-top{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+    .badge{
+      font-family:var(--display);font-weight:700;font-size:.72rem;letter-spacing:.3px;
+      color:var(--bg);background:var(--cyan);padding:.32rem .6rem;border-radius:7px;flex:none;
+      box-shadow:0 0 10px rgba(0,204,255,.35);white-space:nowrap;
+    }
+    .badge.o{background:var(--orange);box-shadow:0 0 10px rgba(255,170,0,.35);}
+    .card h3{font-size:1.02rem;font-weight:700;color:var(--text);flex:1;min-width:160px;}
+    .card h3 .en{display:block;font-family:var(--display);font-size:.68rem;font-weight:600;color:var(--muted-2);letter-spacing:.5px;margin-top:1px;}
+    .card p{color:var(--muted);font-size:.9rem;margin-top:10px;}
+    .card p + p{margin-top:8px;}
+
+    .tip{
+      margin-top:12px;background:var(--card-2);border-left:3px solid var(--orange);
+      border-radius:0 8px 8px 0;padding:10px 13px;font-size:.85rem;color:#cdd8e8;
+    }
+    .tip b{color:var(--orange);font-family:var(--thai);}
+    .tip.cy{border-left-color:var(--cyan);}
+    .tip.cy b{color:var(--cyan);}
+
+    /* video */
+    .video{margin-top:14px;}
+    .video .frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;}
+    .video iframe,.video video{position:absolute;inset:0;width:100%;height:100%;border:0;}
+    .video .ph{
+      position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+      background:repeating-linear-gradient(45deg,#190f2b,#190f2b 12px,#1f1436 12px,#1f1436 24px);
+      color:var(--muted-2);font-size:.82rem;gap:6px;
+    }
+    .video .ph .ico{font-size:1.8rem;opacity:.5;}
+    .video .yt{position:absolute;inset:0;display:block;cursor:pointer;background:#000 center/cover no-repeat;}
+    .video .yt::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.25);transition:background .2s;}
+    .video .yt:hover::after{background:rgba(0,0,0,.05);}
+    .video .yt .play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;width:68px;height:48px;border-radius:12px;background:#f00;display:grid;place-items:center;}
+    .video .yt .play::before{content:"";border-style:solid;border-width:10px 0 10px 17px;border-color:transparent transparent transparent #fff;margin-left:4px;}
+    .video .ytlink{display:inline-block;margin-top:6px;font-size:.78rem;color:var(--muted-2);text-decoration:none;}
+    .video .ytlink:hover{text-decoration:underline;}
+
+    /* range chip for tuning */
+    .range{font-family:var(--display);font-size:.68rem;color:var(--green);background:rgba(61,220,132,.1);border:1px solid rgba(61,220,132,.35);padding:.28rem .55rem;border-radius:7px;flex:none;white-space:nowrap;}
+
+    .callout{
+      background:linear-gradient(180deg,rgba(255,170,0,.08),rgba(185,140,255,.07));
+      border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:20px;
+      font-size:.9rem;color:#cdd8e8;
+    }
+    .callout b{color:var(--orange);}
+
+    footer{text-align:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--line-soft);color:var(--muted-2);font-size:.82rem;}
+    footer .fn{font-family:var(--display);color:var(--orange);text-shadow:0 0 6px rgba(255,170,0,.4);letter-spacing:1px;}
+
+    @media(max-width:520px){
+      .card h3{min-width:100%;}
+      nav a{font-size:.65rem;padding:5px 9px;}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="butterflies" id="butterflies"></div>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="#flash" class="active" data-sec="flash">⚡Flash</a>
+      <a href="#assembly" data-sec="assembly">🔧 การประกอบ</a>
+      <a href="#manual" data-sec="manual">📖 คู่มือ</a>
+      <a href="#tune" data-sec="tune">⚙️ ค่าจูน</a>
+      <a href="#wiring" data-sec="wiring">🔌 การต่อสาย</a>
+    </div>
+  </nav>
+
+  <div class="wrap">
+
+    <!-- ═══════ HERO ═══════ -->
+    <header class="hero">
+      <h1>Butterfly Bionic</h1>
+      <div class="sub">Firmware &amp; User Manual · By T Maker</div>
+      <p class="tag">แฟลชเฟิร์มแวร์หุ่นยนต์ผีเสื้อ พร้อมคู่มือการควบคุมและการจูนแบบละเอียด</p>
+    </header>
+
+    <!-- ═══════ FLASHER ═══════ -->
+    <section id="flash" class="sec-panel active">
+      <div class="sec-head"><h2>แฟลช<span>เฟิร์มแวร์</span></h2></div>
+      <p class="lead">เลือกเฟิร์มแวร์ที่ต้องการ แล้วกดปุ่มเพื่อแฟลชผ่านสาย USB ได้เลย</p>
+
+      <div class="flash-box">
+        <select id="fwSelect">
+          <option value="firmware/controller/manifest.json">🎮 Controller (ESP-NOW) 🎮</option>
+          <option value="firmware/espnow/manifest.json">🦋 Butterfly Bionic — ESP-NOW 🦋</option>
+          <option value="firmware/elrs/manifest.json">🦋 Butterfly Bionic — ELRS 🦋</option>
+        </select>
+
+        <esp-web-install-button id="installBtn" manifest="firmware/controller/manifest.json">
+          <span slot="unsupported">⚠ เบราว์เซอร์นี้ยังแฟลชไม่ได้ — ใช้ Chrome หรือ Edge บนคอมพิวเตอร์</span>
+        </esp-web-install-button>
+
+        <p class="flash-note">
+          <b>ต้องใช้:</b> เปิดหน้านี้ด้วย <b>Chrome / Edge บนคอมพิวเตอร์</b> แล้วเสียบบอร์ดผ่าน USB<br>
+          บนมือถือยังแฟลชไม่ได้ (Web Serial ยังไม่รองรับ) — ให้ใช้คอมพิวเตอร์ในการแฟลช
+        </p>
+      </div>
+      <div id="flash-video"></div>
+    </section>
+
+    <!-- ═══════ ASSEMBLY ═══════ -->
+    <section id="assembly" class="sec-panel">
+      <div class="sec-head"><h2>การ<span>ประกอบ</span></h2></div>
+      <p class="lead">สาธิตและอธิบายการติดตั้งปีกเข้ากับลำตัวผีเสื้อ ทีละขั้นตอน</p>
+      <div class="callout">
+        <b>สำคัญ:</b> แฟลชเฟิร์มแวร์และเปิดเครื่องให้เซอร์โวอยู่ <b>ตำแหน่งกลาง</b> ก่อนติดปีกทุกครั้ง
+        ไม่อย่างนั้นปีกซ้าย-ขวาจะไม่สมมาตร และเซอร์โวอาจกระแทกสุดทางตอนกระพือ
+      </div>
+      <div id="list-assembly"></div>
+    </section>
+
+    <!-- ═══════ MANUAL ═══════ -->
+    <section id="manual" class="sec-panel">
+      <div class="sec-head"><h2>คู่มือ<span>การใช้งาน</span></h2></div>
+      <p class="lead">อธิบายปุ่มและฟังก์ชั่นต่าง ๆ — แบ่งเป็น 2 ระบบตามวิธีบังคับ</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="espnow">ESP-NOW<small>บังคับด้วยรีโมท DIY ด้วย ESP NOW</small></button>
+        <button class="tab" data-tab="elrs">ELRS<small>บังคับด้วยรีโมทที่รองรับ ExpressLRS</small></button>
+      </div>
+
+      <div class="panel active" id="panel-espnow"><div id="list-espnow"></div></div>
+      <div class="panel" id="panel-elrs"><div id="list-elrs"></div></div>
+    </section>
+
+    <!-- ═══════ TUNING ═══════ -->
+    <section id="tune" class="sec-panel">
+      <div class="sec-head"><h2>ค่าจูน<span>ในหน้าเว็บ</span></h2></div>
+      <p class="lead">อธิบายการตั้งค่าต่าง ๆ — ปรับแล้วเกิดอะไรขึ้น พร้อมเทคนิค</p>
+      <div class="callout">
+        <b>เปิดหน้าเว็บ config ยังไง?</b><br>
+        • <b>ESP-NOW:</b> ดับเบิลคลิกจอยฝั่งซ้ายที่รีโมท → ผีเสื้อเปิด WiFi ชื่อ <code>Butterfly_xxxx</code> → ใส่ (รหัส 12345678) → เปิด Chrome <code>192.168.4.1</code><br>
+        • <b>ELRS:</b> สับสวิตช์ CH6 (AUX2) เป็น ON (ต้องเปิดรีโมทและเชื่อมต่อติดก่อน) → ผีเสื้อเปิด WiFi ชื่อ <code>Butterfly_xxxx</code> → ใส่ (รหัส 12345678) → เปิด Chrome <code>192.168.4.1</code><br>
+        ทุกค่าที่กด <b>Save</b> มีผลกับการบิน <b>ทันที</b> และจำค่าไว้ถาวรใน flash. ส่วนใหญ่มือถือจะเด้งหน้าตั้งค่าขึ้นมาเองเมื่อต่อ WiFi
+      </div>
+      <div id="list-tune"></div>
+    </section>
+
+    <!-- ═══════ WIRING (ELRS) ═══════ -->
+    <section id="wiring" class="sec-panel">
+      <div class="sec-head"><h2>การต่อสาย &amp; <span>ตั้งค่ารีโมท</span></h2></div>
+      <p class="lead">สำหรับระบบ ELRS — การเดินสาย ELRS RX และตั้งช่องใน EdgeTX</p>
+      <div id="list-wiring"></div>
+    </section>
+
+    <footer>
+      <p>Developed by <span class="fn">T Maker</span></p>
+      <p style="margin-top:6px;">Contact @ Facebook · TikTok · YouTube</p>
+    </footer>
+
+  </div>
+
+  <script>
+  /* ═══════════════════════════════════════════════════════════
+     ⚙️  วิธีใส่วิดีโอ: ใส่ค่าในช่อง "video" ของแต่ละฟังก์ชันด้านล่าง
+        รองรับ 3 แบบ:
+          1) ลิงก์/ไอดี YouTube  เช่น  "https://youtu.be/abcd1234"  หรือ  "abcd1234xyz"
+          2) ลิงก์ไฟล์วิดีโอ    เช่น  "videos/throttle.mp4"
+          3) เว้นว่าง ""         → จะขึ้นกล่องว่าง (ยังไม่มีวิดีโอ)
+     ═══════════════════════════════════════════════════════════ */
+
+  /* วิดีโออธิบายวิธีแฟลช (หน้า ⚡Flash) */
+  const FLASH_VIDEO = "";
+
+  const ESPNOW = [
+    { badge:"จอยซ้าย ▲▼", en:"Left Stick · Up/Down", o:false,
+      title:"คันเร่ง — ความเร็วกระพือปีก",
+      desc:["ดันขึ้น = กระพือเร็วขึ้น (ยกตัว/ไต่). <b>ปล่อยมือ จอยเด้งกลับกลางเอง</b> = ปีกหยุดกระพือแล้วกางร่อน"],
+      tip:{t:"วิธีเล่น:", b:"ดันขึ้นเพื่อไต่ ดันค้างไว้ เลี้ยงคันเร่ง ถ้าบินสูงไป ผ่อนให้ร่อนลง สลับกันไป"},
+      video:"" },
+
+    { badge:"จอยขวา ◀▶", en:"Right Stick · Left/Right", o:false,
+      title:"เลี้ยวซ้าย/ขวา (Roll)",
+      desc:["โยกจอยขวาไปด้านข้างเพื่อเลี้ยว. มีระบบช่วยเชิดหัวให้เองตอนเลี้ยว จะได้ไม่หัวทิ่มขณะเลี้ยว"],
+      tip:{t:"วิธีเล่น:", b:"เลี้ยวด้วยการดันจอยด้านขวาไปทางซ้ายเพื่อเลี้ยวซ้าย ดันไปทางขวาเพื่อเลี้ยวขวา ดันเยอะเลี้ยวแรง, ต้องค่อยๆดัน ปล่อยจอยดีดกลับกลางจะกลับมาตรง"},
+      video:"" },
+
+    { badge:"จอยขวา ▲▼", en:"Right Stick · Up/Down", o:false,
+      title:"เชิด/ก้มหัว (Pitch)",
+      desc:["ดันขึ้น = เชิดหัว (ไต่), ดันลง = ก้มหัว (ต่ำลง)"],
+      tip:{t:"วิธีเล่น:", b:"ดันจอยขวาขึ้นลงควบคุมกับคันเร่ง อย่าดันเยอะหรือแรงเกินไป ถ้าดันขึ้นลงแรงไปเครื่องจะตก, เชิดหัวพร้อมเพิ่มคันเร่ง = ไต่สวย. อย่าเชิดค้างตอนคันเร่งต่ำ เดี๋ยวตก"},
+      video:"" },
+
+    { badge:"SWL ▲ / ปุ่ม L ▼", en:"Trim · Left Wing", o:true,
+      title:"ตั้งปีกซ้าย (แก้บินเอียง)",
+      desc:["ถ้าผีเสื้อชอบเอียงไปข้างซ้าย ใช้ตัวนี้แก้. <b>คลิก SWL 1 ครั้ง = ปรับขึ้น</b>, <b>กดปุ่ม L = ปรับลง</b> ครั้งละ 1 ขั้น ปรับได้ ±20 ขั้น (มีเสียงตอบรับ)",
+            "ค่า trim ถูกจำไว้ใน<b>รีโมท</b> แล้วส่งไปกับทุกสัญญาณ — เปิดเครื่องครั้งหน้าไม่ต้องตั้งใหม่ (ปีกจะอยู่ตำแหน่งกลางล้วนๆ จนกว่าจะเชื่อมรีโมท แล้วค่อยขยับไปตำแหน่ง trim). ใช้รีโมทตัวเดิมกับผีเสื้อตัวไหนก็ได้ค่า trim ชุดเดียวกัน. ดูค่าปัจจุบันได้ที่ช่อง <b>Wing Trim</b> ในหน้าเว็บรีโมท",
+            "คลิก SWL ครั้งเดียวแล้ว trim จะทำงานหลังปล่อยประมาณ 0.3 วินาที (เครื่องรอดูก่อนว่าเป็นดับเบิลคลิกหรือเปล่า)"],
+      tip:{t:"วิธีเล่น:", b:"ค่อยๆ ปรับทีละครั้งจนผีเสื้อบินตรง ปรับแค่ปีกซ้ายหรือปรับควบคู่กับ SWR ด้วยก็ได้"},
+      video:"" },
+
+    { badge:"SWR ▲ / ปุ่ม R ▼", en:"Trim · Right Wing", o:true,
+      title:"ตั้งปีกขวา (แก้บินเอียง)",
+      desc:["เหมือนปีกซ้ายแต่เป็นข้างขวา. <b>คลิก SWR = ปรับขึ้น</b>, <b>กดปุ่ม R = ปรับลง</b>"],
+      tip:{t:"วิธีเล่น:", b:"ปกติปรับแค่ข้างเดียวก็พอ ปรับแค่ปีกขวาหรือปรับควบคู่กับ SWL ด้วยก็ได้"},
+      video:"" },
+
+    { badge:"SWL + SWR", en:"Both Sticks Press", o:true,
+      title:"โหมดพัก (Perch)",
+      desc:["กดหัวจอยทั้งสองข้างพร้อมกัน = เข้า/ออกโหมดพัก ปีกจะแกว่งช้าๆ เบาๆ เหมือนผีเสื้อเกาะพัก. ใช้ได้ตอนคันเร่งอยู่กลาง/ล่าง (ไม่ได้ดันขึ้น)",
+            "ถ้าดันคันเร่งขึ้นระหว่างพัก ปีกจะกลับมากระพือบินตามปกติ แต่<b>พอปล่อยคันเร่ง จะกลับเข้าโหมดพักอีก</b> — ถ้าต้องการออกจากโหมดพักจริง ให้กด SWL + SWR พร้อมกันอีกครั้ง"],
+      tip:{t:"วิธีเล่น:", b:"ใช้ตอนโชว์ วางบนมือหรือกิ่งไม้"},
+      video:"" },
+
+    { badge:"ปุ่ม L + ปุ่ม R", en:"Both Buttons Press", o:true,
+      title:"ไฟ LED",
+      desc:["กดปุ่มซ้าย + ขวาพร้อมกัน = เปิด/ปิดไฟบนตัวผีเสื้อ (มีเสียงตอบรับ)"],
+      tip:{t:"ข้อควรระวัง:", b:"กดสองปุ่มให้ลงพร้อมกันจริงๆ (ห่างกันไม่เกิน ~0.1 วินาที) ไม่งั้นปุ่มที่กดก่อนจะถูกนับเป็นการ trim ไปด้วย 1 ขั้น"},
+      video:"" },
+
+    { badge:"ดับเบิลคลิก SWL", en:"Double-click SWL", o:false,
+      title:"เปิดหน้าตั้งค่า (ผ่าน WiFi)",
+      desc:["ดับเบิลคลิกหัวจอยซ้าย (มีเสียงยืนยันคนละโน้ตกับเสียง trim) = เปิด WiFi <b>2 ตัวพร้อมกัน</b>:",
+            "• <b>ผีเสื้อ</b> — WiFi <code>Butterfly_xxxx</code> (รหัส 12345678) → เปิด <code>192.168.4.1</code> เพื่อปรับค่าการบิน<br>• <b>รีโมท</b> — WiFi <code>Controller_xxxx</code> (รหัส 12345678) → เปิด <code>192.168.10.1</code> เพื่อตั้งค่าจอยและจับคู่"],
+      tip:{t:"ควรทำ:", b:"เปิดตอนอยู่บนพื้นเท่านั้น ปรับเสร็จปิดก่อนบิน", cy:true},
+      video:"" },
+
+    { badge:"ดับเบิลคลิก SWR", en:"Double-click SWR", o:false,
+      title:"ปิดหน้าตั้งค่า",
+      desc:["ดับเบิลคลิกหัวจอยขวา = ปิด WiFi/หน้าตั้งค่าทั้งของผีเสื้อและของรีโมท แล้วกลับสู่โหมดบินระยะไกล (Long Range)"],
+      tip:{t:"ควรทำ:", b:"ปิดทุกครั้งก่อนบินจริง สัญญาณจะไกลและนิ่งที่สุด"},
+      video:"" },
+
+    { badge:"อัตโนมัติ", en:"Failsafe", o:false,
+      title:"ระบบตัดปลอดภัยเมื่อสัญญาณขาด",
+      desc:["ถ้าสัญญาณขาดเกินครึ่งวินาที ปีกจะค่อยๆ กลับมากางนิ่งเองและไฟดับ กันปีกค้างท่าแปลกๆ — โดยยังคงตำแหน่ง trim และ STROKE_BIAS ไว้ ปีกจึงไม่กระตุกถ้าสัญญาณหลุดๆ ติดๆ",
+            "ตอนเพิ่งเปิดเครื่องและยังไม่เคยเชื่อมรีโมท ปีกจะอยู่ที่ CENTER_ANGLE ล้วนๆ (ไม่รวม trim / STROKE_BIAS)"],
+      tip:null, video:"" },
+
+    { badge:"จับคู่", en:"Pairing · Receiver MAC", o:true,
+      title:"จับคู่รีโมทกับผีเสื้อ (ทำครั้งแรกครั้งเดียว)",
+      desc:["รีโมทจะส่งสัญญาณไปหาผีเสื้อตาม MAC Address ที่ตั้งไว้ ต้องตั้งให้ตรงก่อนถึงจะบินได้:",
+            "1) ดับเบิลคลิก SWL → ต่อ WiFi <code>Butterfly_xxxx</code> เปิด <code>192.168.4.1</code> → จด <b>MAC Address</b> ที่แสดงบนสุดของหน้า<br>2) ต่อ WiFi <code>Controller_xxxx</code> เปิด <code>192.168.10.1</code> → ช่อง <b>Set Receiver MAC Address</b> ใส่ MAC ที่จดไว้ (เช่น <code>08:A6:F7:21:BA:6C</code>) → กด <b>Save MAC</b><br>3) มีผลทันที ไม่ต้องรีสตาร์ท"],
+      tip:{t:"เทคนิค:", b:"ตัวเลขในชื่อ WiFi <code>Butterfly_xxxx</code> ก็คือ MAC ของผีเสื้อตัวนั้น (ไม่มีเครื่องหมาย :)", cy:true},
+      video:"" },
+
+    { badge:"หน้าเว็บรีโมท", en:"Controller Calibration", o:false,
+      title:"ตั้งค่าจอยที่ตัวรีโมท",
+      desc:["ดับเบิลคลิก SWL → ต่อ WiFi <code>Controller_xxxx</code> (รหัส 12345678) → เปิด <code>192.168.10.1</code>. ในหน้าเว็บมี:",
+            "• <b>Calibrate Center</b> — ปล่อยจอยทั้งสองไว้ตรงกลางแล้วกด<br>• <b>Save Min/Max</b> — หมุนจอยให้สุดทุกทิศก่อน แล้วกด<br>• <b>Reset All</b> — ล้างค่า calibrate ทั้งหมด<br>• <b>Mapping Parameters</b> — ช่วง output ของแต่ละแกน (ค่ามาตรฐาน ±1000) และความนุ่ม/ความไวของจอย (<b>Expo</b> 0–1, <b>Rate</b> 0–1)<br>• <b>Wing Trim</b> — แสดงค่า trim ปีกซ้าย/ขวาปัจจุบัน"],
+      tip:{t:"วิธีทำ:", b:"เบื้องต้นบินด้วยค่ามาตรฐาน แต่สามารถปรับได้เล็กน้อยผ่านหน้าเว็บ"},
+      video:"" },
+  ];
+
+  const ELRS = [
+    { badge:"CH1", en:"Aileron", o:false,
+      title:"เลี้ยวซ้าย/ขวา (Roll)",
+      desc:["สติ๊ก Aileron บนรีโมท โยกซ้าย-ขวาเพื่อเลี้ยว มีระบบช่วยเชิดหัวตอนเลี้ยว"],
+      tip:null, video:"" },
+
+    { badge:"CH2", en:"Elevator", o:false,
+      title:"เชิด/ก้มหัว (Pitch)",
+      desc:["สติ๊ก Elevator ดันขึ้น = เชิดหัว, ดันลง = ก้มหัว"],
+      tip:null, video:"" },
+
+    { badge:"CH3", en:"Throttle", o:true,
+      title:"คันเร่ง — ความเร็วกระพือปีก",
+      desc:["ดันขึ้นเท่าไหร่ ปีกกระพือเร็วเท่านั้น และ <b>ค้างอยู่ที่เดิม ไม่เด้งกลับ</b> — ตั้งระดับแล้วปล่อยมือได้เลย. <b>ดึงลงสุด = ปีกหยุดกระพือ กลับมากางร่อน</b>",
+            "ช่วงล่างสุด −100% ถึง −90% = ร่อน (ไม่กระพือ). พอเลย −90% ขึ้นมา จะเริ่มกระพือที่ FLAP_HZ_MIN ทันที แล้วเร็วขึ้นเรื่อยๆ จนถึง FLAP_HZ_MAX ที่ +100%"],
+      tip:{t:"วิธีเล่น:", b:"ตั้งคันเร่งไว้ระดับที่บินเรียบแล้วปล่อยมือ ไม่ต้องดันค้าง. อยากร่อนลงก็ดึงลงสุด"},
+      video:"" },
+
+    { badge:"CH4 (SC)", en:"3-Position Switch", o:true,
+      title:"สวิตช์เลือกโหมดปรับค่าด้วยสติ๊ก",
+      desc:["สวิตช์ 3 จังหวะ ใช้คู่กับสติ๊กเพื่อปรับค่าระหว่างบิน โดยไม่ต้องเปิดเว็บ:<br>• <b>บน</b> = บินปกติ ไม่ปรับอะไร<br>• <b>กลาง</b> = ปรับ “มุมเชิดตัว” (STROKE_BIAS) — ดันสติ๊ก CH2 ขึ้น = เพิ่ม, ลง = ลด<br>• <b>ล่าง</b> = ปรับ TRIM เลี้ยว — ดันสติ๊ก CH1 ขวา = เพิ่ม, ซ้าย = ลด (ปรับได้ ±10°)",
+             "ค่าเปลี่ยน<b>ด้วยความเร็วคงที่ 5°/วินาที</b> ตราบที่ยังดันสติ๊กค้าง (ดันแรงหรือเบาได้ผลเท่ากัน) ปล่อยสติ๊กกลับกลาง = ค่าหยุดทันที",
+             "⚠ ระหว่างอยู่ในโหมดปรับ สติ๊กที่ใช้ปรับจะ<b>ไม่ควบคุมการบิน</b> (กลาง = เชิด/ก้มไม่ได้, ล่าง = เลี้ยวไม่ได้) ต้องสับกลับขึ้นก่อนถึงจะบินได้ปกติ",
+             "ปรับเสร็จ สับสวิตช์กลับขึ้น = เครื่องจำค่าให้เองอัตโนมัติ"],
+      tip:{t:"วิธีทำ:", b:"ดันสติ๊กทีละจังหวะสั้นๆ จนพอใจ แล้วสับกลับขึ้นเพื่อบันทึก. ถ้าทิศทางสวิตช์กลับด้าน (บน/ล่างสลับกัน) ให้กลับทิศ CH4 ใน EdgeTX", cy:true},
+      video:"" },
+
+    { badge:"CH5 (AUX1)", en:"2-Position Switch", o:false,
+      title:"โหมดพัก (Perch)",
+      desc:["สับสวิตช์ = เข้า/ออกโหมดพัก (ปีกแกว่งช้าๆ). ใช้ได้ตอนคันเร่งอยู่ล่างสุด"],
+      tip:null, video:"" },
+
+    { badge:"CH6 (AUX2)", en:"2-Position Switch", o:false,
+      title:"เปิด/ปิดหน้าตั้งค่า (WiFi)",
+      desc:["สับ ON = ผีเสื้อปล่อย WiFi ชื่อ <code>Butterfly_xxxx</code> (รหัส 12345678) ต่อแล้วเปิด <code>192.168.4.1</code> เพื่อปรับค่า. การบังคับบินยังทำงานปกติผ่านรีโมท",
+            "สวิตช์นี้ทำงานเฉพาะตอนรีโมทเชื่อมต่อกับผีเสื้ออยู่ — ถ้ายังไม่เปิดรีโมท จะเปิด WiFi ไม่ได้"],
+      tip:{t:"ควรทำ:", b:"สับเปิด-ปิดตอนอยู่บนพื้น", cy:true},
+      video:"" },
+
+    { badge:"CH7 (AUX3)", en:"2-Position Switch", o:false,
+      title:"ไฟ LED",
+      desc:["สับสวิตช์ = เปิด/ปิดไฟบนตัวผีเสื้อ"],
+      tip:null, video:"" },
+
+    { badge:"อัตโนมัติ", en:"Failsafe", o:false,
+      title:"ระบบตัดปลอดภัย",
+      desc:["ต้องเชื่อมต่อรีโมทติดก่อนถึงจะเริ่มบินได้ (กันค่าลวงตอนยังไม่พร้อม). ถ้าสัญญาณขาดเกินครึ่งวินาที ปีกค่อยๆ กลับมานิ่งเองและไฟดับ",
+            "ทั้งตอนยังไม่เชื่อมรีโมทและตอนสัญญาณขาด ปีกจะกลับไปที่ CENTER_ANGLE ล้วนๆ (ไม่รวม trim / STROKE_BIAS)"],
+      tip:null, video:"" },
+
+    { badge:"เว็บ Config", en:"Trim via Web", o:false,
+      title:"ตั้งปีกซ้าย/ขวา (ผ่านเว็บ)",
+      desc:["ตั้ง trim ปีกซ้าย/ขวาแยกกันได้ในหน้าเว็บ (TRIM_LEFT / TRIM_RIGHT, ±30°).",
+            "ส่วน trim ด่วนระหว่างบินใช้ SC ล่าง + สติ๊ก CH1 — ตัวนี้เป็น trim เลี้ยว คือปีกข้างหนึ่งขึ้น อีกข้างลงพร้อมกัน (±10°) ซ้อนทับบนค่าจากเว็บ"],
+      tip:{t:"วิธีทำ:", b:"ตั้งผ่านเว็บให้บินตรงก่อน แล้วค่อยจูนละเอียดด้วยรีโมท"},
+      video:"" },
+  ];
+
+  const ASSEMBLY = [
+    { badge:"ขั้นที่ 1", en:"Prepare Parts", o:true,
+      title:"เตรียมชิ้นส่วน",
+      desc:["• ลำตัวผีเสื้อ (บอร์ดควบคุม + เซอร์โว 2 ตัว + แบตเตอรี่)<br>• ปีกซ้าย 1 ชิ้น และปีกขวา 1 ชิ้น (เลือกสีที่ชอบ)<br>• แขนเซอร์โว (servo horn) และสกรูยึด"],
+      tip:{t:"หมายเหตุ:", b:"ปีกซ้ายกับปีกขวาเป็นคนละแบบกัน ตรวจให้แน่ใจว่าได้ครบ 1 คู่ ไม่ใช่ข้างเดียวกัน 2 ชิ้น"},
+      video:"https://youtu.be/cFO-f64Zg1A" },
+
+    { badge:"ขั้นที่ 2", en:"Attach Servo Horn", o:false,
+      title:"ใส่แขนเซอร์โวให้อยู่แนวราบ",
+      desc:["ขณะเซอร์โวอยู่ตำแหน่งกลาง สวมแขนเซอร์โวให้<b>ขนานกับพื้น (แนวราบ)</b> ทั้งสองข้าง แล้วขันสกรูยึดให้แน่น"],
+      tip:{t:"เทคนิค:", b:"ถ้าเฟืองเซอร์โวไม่ลงล็อกที่แนวราบพอดี ให้เลือกล็อกที่ใกล้ที่สุด แล้วค่อยไปปรับละเอียดด้วย CENTER_ANGLE / trim ภายหลัง"},
+      video:"https://youtu.be/doeWjsHqDAI" },
+
+    { badge:"ขั้นที่ 3", en:"Mount Wings", o:true,
+      title:"ติดปีกเข้ากับแขนเซอร์โว",
+      desc:["ติดปีกซ้ายเข้ากับแขนเซอร์โวด้านซ้าย และปีกขวาเข้ากับด้านขวา ให้ปีกทั้งสองกางออกในแนวราบเท่ากัน"],
+      tip:{t:"ข้อควรระวัง:", b:"อย่าหมุนแขนเซอร์โวด้วยมือแรงๆ ขณะเครื่องเปิดอยู่ จะทำให้เฟืองเซอร์โวเสียหาย"},
+      video:"https://youtu.be/7hbtSougwfI" },
+
+    { badge:"ขั้นที่ 4", en:"Test & Adjust", o:false,
+      title:"ทดสอบและปรับให้สมมาตร",
+      desc:["เปิดรีโมท ลองเร่งคันเร่งเบาๆ ดูว่าปีกกระพือสูง-ต่ำเท่ากันทั้งสองข้าง และไม่ชนลำตัวหรือกระแทกสุดทาง",
+            "ถ้าปีกข้างใดข้างหนึ่งเอียง ให้ปรับด้วย trim (ESP-NOW: SWL/SWR และปุ่ม L/R · ELRS: TRIM_LEFT/RIGHT ในหน้าเว็บ) หรือปรับ CENTER_ANGLE ถ้าเอียงทั้งคู่"],
+      tip:{t:"พร้อมบิน:", b:"ดูวิธีบังคับต่อได้ที่เมนู 📖 คู่มือ และปรับค่าการบินที่เมนู ⚙️ ค่าจูน", cy:true},
+      video:"https://youtu.be/Lq0u1QhxXTA" },
+  ];
+
+  const TUNE = [
+    { key:"CENTER_ANGLE", range:"70–110°", both:true,
+      desc:"มุมกลางของปีกตอนไม่กระพือ. ปกติ 90° = ปีกอยู่แนวราบพอดี",
+      tip:"ถ้าปีกไม่ราบตอนนิ่ง ค่อยๆ ขยับค่านี้จนสมมาตร" },
+    { key:"FLAP_AMP", range:"40–85°", both:true,
+      desc:"ความกว้างของการกระพือ (ปีกขึ้น-ลงมากแค่ไหน). มาก = ยกแรง แต่ถ้ามากไปเซอร์โวตามไม่ทัน กลับได้แรงยกน้อยลง",
+      tip:"~65–70° กำลังดี (ค่าเริ่มต้น ESP-NOW 65 / ELRS 70). ถ้าเพิ่ม “มุมเชิดตัว” ต้องลดค่านี้ลงด้วย" },
+    { key:"MAX_ROLL", range:"0–40°", both:true,
+      desc:"ความแรงในการเอียงตอนเลี้ยว. มาก = เลี้ยวคม , เร็ว",
+      tip:"เริ่ม ~15–20° (ค่าเริ่มต้น 20). ถ้าคุมยากให้ลดลง" },
+    { key:"MAX_PITCH", range:"0–40°", both:true,
+      desc:"ความแรงในการเชิด/ก้มหัว ตั้งเยอะ = เชิด/ก้ม เยอะ = ตกหรือสูญเสียแรงยก",
+      tip:"เริ่ม ~10–15° (ค่าเริ่มต้น ESP-NOW 15 / ELRS 10). ถ้าเชิดแล้วตกง่ายให้ลดลง" },
+    { key:"GLIDE_STEP", range:"0.5–5", both:true,
+      desc:"ความเร็วที่ปีกกางกลับกลางตอนร่อน. มาก = กลับไว",
+      tip:"อยากให้ร่อนนุ่ม ตั้งต่ำ ~1.5–2 (ค่าเริ่มต้น 2)" },
+    { key:"FLAP_HZ_MIN", range:"ESP-NOW 1–8 / ELRS 0–8 Hz", both:true,
+      desc:"ความเร็วกระพือตอนเร่งน้อยสุด (ทันทีที่เริ่มกระพือ)",
+      tip:"~1.5–2 Hz (ค่าเริ่มต้น ESP-NOW 2.0 / ELRS 1.5). ถ้าเริ่มแล้วยังตกให้เพิ่ม" },
+    { key:"FLAP_HZ_MAX", range:"1–10 Hz", both:true,
+      desc:"ความเร็วกระพือตอนเร่งเต็ม. สูง = ยกแรง/ไต่ไว แต่สูงไปเซอร์โวตามไม่ทัน",
+      tip:"~3–3.5 Hz กำลังพอดี (ค่าเริ่มต้น ESP-NOW 3.0 / ELRS 3.5) อย่าดันสูงเกินโดยไม่ลด FLAP_AMP" },
+    { key:"LOOP_DELAY_MS", range:"2–10 ms", both:true,
+      desc:"ความถี่อัปเดตการเคลื่อนไหว (ยิ่งต่ำยิ่งลื่น). ไม่กระทบความเร็วกระพือ",
+      tip:"3–4 ms กำลังดี (ค่าเริ่มต้น 4)" },
+    { key:"STROKE_BIAS", range:"−40 ถึง 40°", both:true,
+      desc:"เลื่อนจังหวะกระพือให้เอียงขึ้นด้านบน ช่วยพยุงตัว/เพิ่มแรงยกเฉลี่ย",
+      tip:"เพิ่มทีละ 2–3° และลด FLAP_AMP ตาม. ELRS ปรับระหว่างบินได้ด้วย SC กลาง + สติ๊ก CH2" },
+    { key:"PERCH_HZ", range:"0.1–5 Hz", both:true,
+      desc:"ความเร็วแกว่งปีกตอนโหมดพัก",
+      tip:"~0.4 Hz แกว่งช้านุ่มเหมือนหายใจ" },
+    { key:"AUTO_PITCH_MAX", range:"0–5°", both:true,
+      desc:"มุมเชิดหัวที่เครื่องเติมให้เองตอนเลี้ยว กันอาการหัวทิ่ม. เลี้ยวแรง = เติมมาก",
+      tip:"ค่าเริ่มต้น ESP-NOW 2° / ELRS 3°. ถ้าเลี้ยวแล้วหัวทิ่มให้เพิ่มทีละ 0.5°" },
+    { key:"MAC Address", range:"แสดงอย่างเดียว", both:true,
+      desc:"MAC ของผีเสื้อตัวนี้ แสดงอยู่บนสุดของหน้าเว็บ",
+      tip:"ESP-NOW: เอาค่านี้ไปใส่ในหน้าเว็บรีโมท (Set Receiver MAC Address) เพื่อจับคู่" },
+    { key:"FILTER_TAU", range:"0–0.3 s", both:false, only:"ESP-NOW",
+      desc:"กรองสัญญาณรบกวน กันเซอร์โวสั่นตอนค้างมุม. มาก = นิ่งแต่ตอบสนองช้าลง, 0 = ปิด",
+      tip:"~0.05 s. ถ้ายังสั่นให้เพิ่ม, ถ้าหน่วงให้ลด (เฉพาะ ESP-NOW)" },
+    { key:"TRIM_LEFT / TRIM_RIGHT", range:"−30 ถึง 30°", both:false, only:"ELRS",
+      desc:"ตั้งปีกซ้าย/ขวาถาวรผ่านเว็บ แก้อาการบินเอียง",
+      tip:"ตั้งให้บินตรงก่อน แล้วจูนละเอียดระหว่างบินด้วย SC ล่าง + สติ๊ก CH1 (เฉพาะ ELRS). ESP-NOW ใช้ trim จากปุ่มบนรีโมทแทน" },
+  ];
+
+  const WIRING = [
+    { badge:"สายไฟ", en:"ELRS RX → บอร์ด", o:true,
+      title:"การต่อสายตัวรับ ELRS",
+      desc:["ต่อสาย 4 เส้น (สายสัญญาณต้อง<b>ไขว้กัน</b> TX→RX):<br>• ELRS RX ขา <b>5V</b> → บอร์ด <b>5V</b><br>• ELRS RX ขา <b>GND</b> → บอร์ด <b>GND</b><br>• ELRS RX ขา <b>TX</b> → บอร์ด <b>GPIO6 (RX)</b><br>• ELRS RX ขา <b>RX</b> → บอร์ด <b>GPIO5 (TX)</b><br>(ความเร็วสาย CRSF 420000 ตั้งอัตโนมัติ ไม่ต้องตั้งเอง)"],
+      tip:{t:"หมายเหตุ:", b:"ถ้าใช้ระบบ ESP NOW ต้องอัพโหลดเฟิร์มแวร์ของ ESP NOW และต้องถอดตัวรับสัญญาณ ELRS ออก , ถ้าใช้ระบบ ELRS ต้องอัพโหลดเฟิร์มแวร์ของ ELRS"},
+      video:"" },
+
+    { badge:"EdgeTX", en:"ตั้งช่องในรีโมท", o:false,
+      title:"ตั้งช่องสัญญาณในรีโมท",
+      desc:["ตั้งช่องให้ตรงตามนี้:<br>• <b>CH1</b>=เลี้ยว &nbsp; <b>CH2</b>=เชิด/ก้ม &nbsp; <b>CH3</b>=คันเร่ง<br>• <b>CH4</b>=สวิตช์ SC (3 จังหวะ)<br>• <b>CH5</b>=พัก &nbsp; <b>CH6</b>=WiFi &nbsp; <b>CH7</b>=ไฟ &nbsp;"],
+      tip:{t:"หมายเหตุ:", b:"ต้องตั้งช่องสัญญาณให้ตรง ถึงจะใช้งานระบบได้ครบถ้วน. คันเร่ง CH3 ต้องเป็นแบบค้างตำแหน่ง (ไม่เด้งกลับกลาง). ทุกช่องที่ใช้อยู่ใน CH1–CH8 ซึ่งได้ความละเอียดเต็มใน ELRS", cy:true},
+      video:"" },
+  ];
+  /* ─── video renderer ─── */
+  function ytId(v){
+    if(!v) return null;
+    let m = v.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+    if(m) return m[1];
+    if(/^[\w-]{11}$/.test(v)) return v;
+    return null;
+  }
+  function videoHTML(v){
+    if(!v || !v.trim()){
+      return '<div class="video"><div class="frame"><div class="ph"><div class="ico">▶</div><div>พื้นที่สำหรับวิดีโอ — วางลิงก์ YouTube หรือ mp4 ในไฟล์</div></div></div></div>';
+    }
+    const id = ytId(v);
+    if(id){
+      // แสดงภาพปกก่อน กดแล้วค่อยโหลด player (ถ้าเปิดไฟล์ตรงจากเครื่อง file:// YouTube จะไม่ยอมเล่นแบบฝัง → เปิดแท็บใหม่แทน)
+      const watch = 'https://www.youtube.com/watch?v='+id;
+      return '<div class="video"><div class="frame"><a class="yt" href="'+watch+'" target="_blank" rel="noopener" data-yt="'+id+'" style="background-image:url(https://i.ytimg.com/vi/'+id+'/hqdefault.jpg)"><span class="play"></span></a></div>'
+           + '<a class="ytlink" href="'+watch+'" target="_blank" rel="noopener">▶ เปิดดูบน YouTube</a></div>';
+    }
+    if(/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(v)){
+      return '<div class="video"><div class="frame"><video controls preload="metadata" src="'+v+'"></video></div></div>';
+    }
+    return '<div class="video"><div class="frame"><iframe src="'+v+'" title="video" allowfullscreen loading="lazy"></iframe></div></div>';
+  }
+
+  function cardHTML(item){
+    let h = '<div class="card"><div class="card-top">';
+    h += '<span class="badge'+(item.o?' o':'')+'">'+item.badge+'</span>';
+    h += '<h3>'+item.title+'<span class="en">'+item.en+'</span></h3></div>';
+    (item.desc||[]).forEach(d=> h += '<p>'+d+'</p>');
+    if(item.tip) h += '<div class="tip'+(item.tip.cy?' cy':'')+'"><b>'+item.tip.t+'</b> '+item.tip.b+'</div>';
+    h += videoHTML(item.video)+'</div>';
+    return h;
+  }
+
+  function tuneHTML(t){
+    let h = '<div class="card"><div class="card-top">';
+    h += '<span class="badge">'+t.key+'</span>';
+    h += '<h3 style="min-width:0;flex:1;"></h3>';
+    h += '<span class="range">'+t.range+'</span></div>';
+    if(!t.both) h += '<p style="color:var(--muted-2);font-size:.78rem;margin-top:8px;">⚙ เฉพาะเฟิร์มแวร์ '+t.only+'</p>';
+    h += '<p>'+t.desc+'</p>';
+    if(t.tip) h += '<div class="tip"><b>เทคนิค:</b> '+t.tip+'</div>';
+    h += '</div>';
+    return h;
+  }
+
+  document.getElementById('flash-video').innerHTML   = videoHTML(FLASH_VIDEO);
+  document.getElementById('list-assembly').innerHTML = ASSEMBLY.map(cardHTML).join('');
+  document.getElementById('list-espnow').innerHTML = ESPNOW.map(cardHTML).join('');
+  document.getElementById('list-elrs').innerHTML   = ELRS.map(cardHTML).join('');
+  document.getElementById('list-tune').innerHTML   = TUNE.map(tuneHTML).join('');
+  document.getElementById('list-wiring').innerHTML = WIRING.map(cardHTML).join('');
+
+  /* ─── YouTube: click-to-play ─── */
+  document.addEventListener('click', e=>{
+    const a = e.target.closest('a.yt[data-yt]');
+    if(!a || location.protocol === 'file:') return;   // file:// → ปล่อยให้ลิงก์เปิดแท็บใหม่
+    e.preventDefault();
+    const f = document.createElement('iframe');
+    f.src = 'https://www.youtube.com/embed/'+a.dataset.yt+'?autoplay=1&rel=0&playsinline=1';
+    f.title = 'video';
+    f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    f.allowFullscreen = true;
+    a.replaceWith(f);
+  });
+
+  /* ─── tabs ─── */
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ─── flasher select ─── */
+  const sel = document.getElementById('fwSelect');
+  const btn = document.getElementById('installBtn');
+  sel.addEventListener('change',()=> btn.setAttribute('manifest', sel.value));
+
+  /* ─── หัวข้อหลักเป็นแท็บ: กดเมนูบน → โชว์เฉพาะหัวข้อนั้น ───*/
+  (function(){
+    const navlinks = document.querySelectorAll('nav a[data-sec]');
+    const panels = document.querySelectorAll('.sec-panel');
+    function show(sec){
+      panels.forEach(p => p.classList.toggle('active', p.id === sec));
+      navlinks.forEach(a => a.classList.toggle('active', a.dataset.sec === sec));
+      window.scrollTo(0, 0);
+    }
+    navlinks.forEach(a => a.addEventListener('click', e => { e.preventDefault(); show(a.dataset.sec); }));
+  })();
+
+  /* ─── background butterflies: มุมมองด้านข้าง ปีกตีขึ้น-ลง บินไปทั่วจอ ─── */
+  (function(){
+    const layer = document.getElementById('butterflies');
+    if(!layer) return;
+    const colors = ['#ffaa00','#ff9f5b','#ffd24d','#ff7ec9','#b98cff','#6ea8ff','#33d6f0','#7cf0c0'];
+    // ปีกใกล้ (มองด้านข้าง) ชี้ขึ้น บานพับที่ (0,0) = ขอบล่าง + ลายแบบอีโมจิ (clip ลายให้อยู่ในปีก)
+    const WING_FORE = 'M0 0 C 2 -20 15 -19 12 -6 C 10 -1 4 1 0 0 Z';
+    const WING_HIND = 'M0 0 C -2 -13 -13 -12 -11 -3 C -9 1 -2 1 0 0 Z';
+    function wingSVG(id){
+      return '<svg viewBox="-15 -22 30 22" preserveAspectRatio="xMidYMax meet">'
+      + '<defs><clipPath id="'+id+'">'
+      +   '<path d="'+WING_FORE+'"/><path d="'+WING_HIND+'"/>'
+      + '</clipPath></defs>'
+      + '<g fill="currentColor" stroke="rgba(8,16,34,.55)" stroke-width="1" stroke-linejoin="round">'
+      +   '<path d="'+WING_FORE+'"/><path d="'+WING_HIND+'"/>'
+      + '</g>'
+      + '<g clip-path="url(#'+id+')">'               // ลายทั้งหมดถูกตัดให้อยู่ในรูปปีก
+      +   '<path d="M1.5 -2 C 3.5 -16 12 -15 10 -6.5 C 8.5 -3 4 -1.5 1.5 -2 Z" fill="rgba(255,255,255,.20)"/>'
+      +   '<g fill="#eef7ff" opacity=".9">'
+      +     '<circle cx="8.6" cy="-14" r="1.5"/><circle cx="10.6" cy="-9.5" r="1.1"/><circle cx="5" cy="-17" r="1.1"/>'
+      +   '</g>'
+      +   '<g fill="rgba(238,247,255,.7)">'
+      +     '<circle cx="-8.5" cy="-8" r="1.1"/><circle cx="-10.5" cy="-5" r="0.85"/>'
+      +   '</g>'
+      + '</g></svg>';
+    }
+    // ลำตัวด้านข้าง หัวชี้ขวา + หนวด
+    const bodySVG =
+      '<svg viewBox="-12 -6 24 12" preserveAspectRatio="xMidYMid meet">'
+      + '<g fill="rgba(20,12,34,.95)">'
+      + '<ellipse cx="-0.5" cy="0" rx="9" ry="1.6"/>'
+      + '<circle cx="8.6" cy="0" r="2"/></g>'
+      + '<g stroke="rgba(20,12,34,.9)" stroke-width="0.8" fill="none" stroke-linecap="round">'
+      + '<path d="M9 -1 Q 13 -5 15 -7"/><path d="M9 -1 Q 12 -3.5 14 -4"/></g></svg>';
+
+    let W = window.innerWidth, H = window.innerHeight;
+    const N = W < 600 ? 12 : 18;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    const M = 80;
+    const list = [];
+
+    for(let i=0;i<N;i++){
+      const size = 30 + Math.random()*32;                 // 30–62px
+      const col  = colors[(Math.random()*colors.length)|0];
+      const el = document.createElement('span');
+      el.className = 'bf';
+      el.style.width = size+'px'; el.style.height = size+'px';
+      el.style.opacity = (0.75 + Math.random()*0.25).toFixed(2);
+
+      const body = document.createElement('span');
+      body.className = 'body';
+      body.innerHTML = bodySVG;
+
+      const wing = document.createElement('span');
+      wing.className = 'wing';
+      wing.style.color = col;
+      wing.style.animationDuration = (0.22 + Math.random()*0.16).toFixed(2)+'s';
+      wing.innerHTML = wingSVG('wc'+i);
+
+      el.appendChild(body); el.appendChild(wing);
+      layer.appendChild(el);
+
+      const ang = Math.random()*Math.PI*2, spd = 12 + Math.random()*20; // px/วินาที
+      const b = {
+        el,
+        x: Math.random()*W, y: Math.random()*H,
+        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+        dir: Math.random()<0.5 ? 1 : -1,   // หันหน้าไปทางที่บิน (ซ้าย/ขวา)
+        pitch: 13 + Math.random()*9,       // เชิดหัวขึ้นค้างไว้ (องศา)
+        sway: 5 + Math.random()*6,         // ส่ายตัว/เอียงปีกตอนบิน
+        ph: Math.random()*Math.PI*2,
+        phv: 0.5 + Math.random()*0.7
+      };
+      list.push(b);
+      draw(b, -b.pitch*b.dir);
+    }
+
+    function draw(b, rot){
+      b.el.style.transform =
+        'translate('+b.x.toFixed(1)+'px,'+b.y.toFixed(1)+'px) rotate('+rot.toFixed(1)+'deg) scaleX('+b.dir+')';
+    }
+
+    if(reduce) return;
+
+    let last = performance.now();
+    function tick(now){
+      const dt = Math.min(0.05, (now-last)/1000); last = now;
+      for(const b of list){
+        b.ph += b.phv*dt;
+        const a = Math.sin(b.ph)*0.6*dt;               // เลี้ยวโค้งไปมา
+        const c = Math.cos(a), s = Math.sin(a);
+        const nvx = b.vx*c - b.vy*s, nvy = b.vx*s + b.vy*c;
+        b.vx = nvx; b.vy = nvy;
+        b.x += b.vx*dt; b.y += b.vy*dt;
+        if(b.vx > 4) b.dir = 1; else if(b.vx < -4) b.dir = -1;   // หันหน้าตามทิศ (มี deadband)
+        if(b.x < -M) b.x = W+M; else if(b.x > W+M) b.x = -M;
+        if(b.y < -M) b.y = H+M; else if(b.y > H+M) b.y = -M;
+        draw(b, -b.pitch*b.dir + Math.sin(b.ph)*b.sway);   // เชิดหัวขึ้น + ส่ายตัว (banking)
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    window.addEventListener('resize', ()=>{ W = window.innerWidth; H = window.innerHeight; });
+  })();
+  </script>
+</body>
+</html>
