@@ -1,12 +1,12 @@
 {
-  "name": "SimpleFly Learning Kit",
+  "name": "Butterfly-Bionic",
   "version": "V1",
   "builds": [
     {
       "chipFamily": "ESP32-C3",
       "parts": [
         {
-          "path": "Controller_SimpleFly_V1.bin",
+          "path": "Butterfly_BionicV1.bin",
           "offset": 0
         }
       ]
